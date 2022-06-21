@@ -16,7 +16,7 @@ func main() {
 		log.Fatalln("Error writing archive:", err)
 	}
 	defer out.Close()
-	err = compress.CreateArchive(files, out)
+	err = compress.TarGz(files, out)
 	if err != nil {
 		log.Fatalln("Error creating archive:", err)
 	}

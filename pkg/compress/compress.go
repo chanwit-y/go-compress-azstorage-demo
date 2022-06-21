@@ -149,7 +149,7 @@ func UnGzip(source, target string) error {
 	return err
 }
 
-func CreateArchive(files []string, buf io.Writer) error {
+func TarGz(files []string, buf io.Writer) error {
 	// Create new Writers for gzip and tar
 	// These writers are chained. Writing to the tar writer will
 	// write to the gzip writer which in turn will write to

@@ -26,7 +26,7 @@ func GetBlobName() string {
 
 	// return fmt.Sprintf("%s-%v.jpg", t.Format("20060102"), uuid)
 	// return fmt.Sprintf("%s-%v.txt", t.Format("20060102"), uuid)
-	return fmt.Sprintf("%s-%v.gzip", t.Format("20060102"), uuid)
+	return fmt.Sprintf("%s-%v.tar.gzip", t.Format("20060102"), uuid)
 }
 
 // The below method assumes you already have the byte array ready to go

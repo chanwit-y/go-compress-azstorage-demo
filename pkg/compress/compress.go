@@ -11,6 +11,75 @@ import (
 	"strings"
 )
 
+func TarGzs(files []File, buf1 io.Writer) {
+	gw := gzip.NewWriter(buf1)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	for _, f := range files {
+		info, _ := f.CreateFolder().CreateFile().GetFileInfo()
+		header, _ := tar.FileInfoHeader(info, info.Name())
+		header.Name = f.fileName
+
+		tw.WriteHeader(header)
+
+		io.Copy(tw, f.file)
+
+		f.RemoveFolder()
+	}
+}
+
+func ExtractTarGzs(gzipStream io.Reader, target string) {
+	uncompressedStream, err := gzip.NewReader(gzipStream)
+	if err != nil {
+		log.Fatal("ExtractTarGz: NewReader failed")
+	}
+
+	tarReader := tar.NewReader(uncompressedStream)
+
+	if err := os.Mkdir(target, 0755); err != nil {
+		log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
+	}
+
+	for true {
+		header, err := tarReader.Next()
+
+		fmt.Println(header)
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatalf("ExtractTarGz: Next() failed: %s", err.Error())
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.Mkdir(header.Name, 0755); err != nil {
+				log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
+			}
+		case tar.TypeReg:
+			outFile, err := os.Create(header.Name)
+			if err != nil {
+				log.Fatalf("ExtractTarGz: Create() failed: %s", err.Error())
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
+			}
+			outFile.Close()
+
+		default:
+			log.Fatalf(
+				"ExtractTarGz: uknown type: %s in %s",
+				header.Typeflag,
+				header.Name)
+		}
+
+	}
+}
+
 func Tar(source, target string) error {
 	filename := filepath.Base(source)
 	target = filepath.Join(target, fmt.Sprintf("%s.tar", filename))
@@ -65,7 +134,7 @@ func Tar(source, target string) error {
 		})
 }
 
-func Untar(tarball, target string) error {
+func Extracttar(tarball, target string) error {
 	reader, err := os.Open(tarball)
 	if err != nil {
 		return err
@@ -125,7 +194,7 @@ func Gzip(source, target string) error {
 	return err
 }
 
-func UnGzip(source, target string) error {
+func ExtractGzip(source, target string) error {
 	reader, err := os.Open(source)
 	if err != nil {
 		return err
@@ -161,7 +230,7 @@ func TarGz(files []string, buf io.Writer) error {
 
 	// Iterate over files and add them to the tar archive
 	for _, file := range files {
-		err := addToArchive(tw, file)
+		err := addToTarGz(tw, file)
 		if err != nil {
 			return err
 		}
@@ -170,7 +239,7 @@ func TarGz(files []string, buf io.Writer) error {
 	return nil
 }
 
-func addToArchive(tw *tar.Writer, filename string) error {
+func addToTarGz(tw *tar.Writer, filename string) error {
 	// Open the file which will be written into the archive
 	file, err := os.Open(filename)
 	if err != nil {
@@ -213,54 +282,4 @@ func addToArchive(tw *tar.Writer, filename string) error {
 	}
 
 	return nil
-}
-
-func ExtractTarGz(gzipStream io.Reader, target string) {
-	uncompressedStream, err := gzip.NewReader(gzipStream)
-	if err != nil {
-		log.Fatal("ExtractTarGz: NewReader failed")
-	}
-
-	tarReader := tar.NewReader(uncompressedStream)
-
-	if err := os.Mkdir(target, 0755); err != nil {
-		log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
-	}
-
-	for true {
-		header, err := tarReader.Next()
-
-		fmt.Println(header)
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			log.Fatalf("ExtractTarGz: Next() failed: %s", err.Error())
-		}
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.Mkdir(header.Name, 0755); err != nil {
-				log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
-			}
-		case tar.TypeReg:
-			outFile, err := os.Create(header.Name)
-			if err != nil {
-				log.Fatalf("ExtractTarGz: Create() failed: %s", err.Error())
-			}
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
-			}
-			outFile.Close()
-
-		default:
-			log.Fatalf(
-				"ExtractTarGz: uknown type: %s in %s",
-				header.Typeflag,
-				header.Name)
-		}
-
-	}
 }

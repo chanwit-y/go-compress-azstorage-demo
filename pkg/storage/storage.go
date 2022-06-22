@@ -1,10 +1,13 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"demo-azure-storage-blob/pkg/env"
 	"fmt"
+	"io/ioutil"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -57,7 +60,7 @@ func UploadBytesToBlob(b []byte) (string, error) {
 	return blockBlobUrl.String(), errU
 }
 
-func DownloadBlob(fileToProcess string) error {
+func DownloadBlob(blobUrl string) error {
 	azrKey, accountName, _, containerName := GetAccountInfo()              // This is our account info method
 	credential, errC := azblob.NewSharedKeyCredential(accountName, azrKey) // Finally we create the credentials object required by the uploader
 	if errC != nil {
@@ -72,19 +75,22 @@ func DownloadBlob(fileToProcess string) error {
 
 	ctx := context.Background() // This example uses a never-expiring context
 	// _, _ = containerURL.Create(ctx, azblob.Metadata{}, azblob.PublicAccessNone)
-	blobURL := containerURL.NewBlockBlobURL(fileToProcess)
+	blobURL := containerURL.NewBlockBlobURL(blobUrl)
 
 	bodyStream, _ := blobURL.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
 
-	fmt.Println(bodyStream.BlobType())
+	downloadedData := &bytes.Buffer{}
+	reader := bodyStream.Body(azblob.RetryReaderOptions{})
 
-	// sourceURL, _ := url.Parse(fileToProcess)
-	// blobName := path.Base(sourceURL.Path)
-	// blobURL := containerURL.NewBlobURL(blobName)
-	// azblob.DownloadBlobToBuffer(ctx, sourceURL)
+	_, err := downloadedData.ReadFrom(reader)
 
-	// fmt.Printf("Starting copy of blob %s\n", blobName)
-	// _, _ := blobURL.StartCopyFromURL(ctx, *sourceURL, azblob.Metadata{}, azblob.ModifiedAccessConditions{}, azblob.BlobAccessConditions{}, azblob.AccessTierHot, azblob.BlobTagsMap{})
+	if err != nil {
+		panic(err)
+	}
+
+	sourceURL, _ := url.Parse(blobUrl)
+	blobName := path.Base(sourceURL.Path)
+	ioutil.WriteFile(blobName, downloadedData.Bytes(), 0644)
 
 	return nil
 }

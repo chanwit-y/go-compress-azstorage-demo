@@ -56,3 +56,35 @@ func UploadBytesToBlob(b []byte) (string, error) {
 	_, errU := azblob.UploadBufferToBlockBlob(ctx, b, blockBlobUrl, o)
 	return blockBlobUrl.String(), errU
 }
+
+func DownloadBlob(fileToProcess string) error {
+	azrKey, accountName, _, containerName := GetAccountInfo()              // This is our account info method
+	credential, errC := azblob.NewSharedKeyCredential(accountName, azrKey) // Finally we create the credentials object required by the uploader
+	if errC != nil {
+		return errC
+	}
+
+	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
+	URL, _ := url.Parse(
+		fmt.Sprintf("https://%s.blob.core.windows.net/%s", accountName, containerName))
+
+	containerURL := azblob.NewContainerURL(*URL, p)
+
+	ctx := context.Background() // This example uses a never-expiring context
+	// _, _ = containerURL.Create(ctx, azblob.Metadata{}, azblob.PublicAccessNone)
+	blobURL := containerURL.NewBlockBlobURL(fileToProcess)
+
+	bodyStream, _ := blobURL.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
+
+	fmt.Println(bodyStream.BlobType())
+
+	// sourceURL, _ := url.Parse(fileToProcess)
+	// blobName := path.Base(sourceURL.Path)
+	// blobURL := containerURL.NewBlobURL(blobName)
+	// azblob.DownloadBlobToBuffer(ctx, sourceURL)
+
+	// fmt.Printf("Starting copy of blob %s\n", blobName)
+	// _, _ := blobURL.StartCopyFromURL(ctx, *sourceURL, azblob.Metadata{}, azblob.ModifiedAccessConditions{}, azblob.BlobAccessConditions{}, azblob.AccessTierHot, azblob.BlobTagsMap{})
+
+	return nil
+}

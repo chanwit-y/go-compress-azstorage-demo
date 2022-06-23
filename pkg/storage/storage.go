@@ -60,7 +60,7 @@ func UploadBytesToBlob(b []byte) (string, error) {
 	return blockBlobUrl.String(), errU
 }
 
-func DownloadBlob(blobUrl string) error {
+func DownloadBlob(blobUrl string, target string) error {
 	azrKey, accountName, _, containerName := GetAccountInfo()              // This is our account info method
 	credential, errC := azblob.NewSharedKeyCredential(accountName, azrKey) // Finally we create the credentials object required by the uploader
 	if errC != nil {
@@ -90,7 +90,7 @@ func DownloadBlob(blobUrl string) error {
 
 	sourceURL, _ := url.Parse(blobUrl)
 	blobName := path.Base(sourceURL.Path)
-	ioutil.WriteFile(blobName, downloadedData.Bytes(), 0644)
+	ioutil.WriteFile(fmt.Sprintf("%s%s", target, blobName), downloadedData.Bytes(), 0644)
 
 	return nil
 }
